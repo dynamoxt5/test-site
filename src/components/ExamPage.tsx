@@ -10,6 +10,20 @@ export default function ExamPage() {
   const [timeLeft, setTimeLeft] = useState(30 * 60);
   const [submitted, setSubmitted] = useState(false);
 
+  // Auto fullscreen when exam starts
+  useEffect(() => {
+    const enterFullscreen = async () => {
+      try {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (err) {
+        // Fullscreen request may be blocked by browser policy
+      }
+    };
+    enterFullscreen();
+  }, []);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -24,39 +38,25 @@ export default function ExamPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Mark skipped questions when navigating away
-  const markSkippedOnLeave = useCallback((fromIndex: number, toIndex: number, currentStatuses: QuestionStatus[], currentAnswers: Record<number, string | string[]>) => {
+  // Mark the current question as skipped if it's unvisited and unanswered
+  const markCurrentAsSkipped = useCallback((fromIndex: number, currentStatuses: QuestionStatus[], currentAnswers: Record<number, string | string[]>) => {
     const newStatuses = [...currentStatuses];
-
-    // Mark the question we're leaving as skipped if it was unvisited and not attempted
     if (newStatuses[fromIndex] === 'unvisited' && !currentAnswers[fromIndex]) {
       newStatuses[fromIndex] = 'skipped';
     }
-
-    // If jumping multiple questions (via sidebar), mark all in-between as skipped
-    const start = Math.min(fromIndex, toIndex);
-    const end = Math.max(fromIndex, toIndex);
-    for (let i = start; i <= end; i++) {
-      if (i === toIndex) continue; // Don't mark the destination
-      if (newStatuses[i] === 'unvisited' && !currentAnswers[i]) {
-        newStatuses[i] = 'skipped';
-      }
-    }
-
     return newStatuses;
   }, []);
 
-  // Handle question navigation
   const navigateToQuestion = useCallback((toIndex: number) => {
     if (toIndex === currentQuestion) return;
     if (toIndex < 0 || toIndex > 19) return;
 
     setStatuses(prev => {
-      return markSkippedOnLeave(currentQuestion, toIndex, prev, answers);
+      return markCurrentAsSkipped(currentQuestion, prev, answers);
     });
 
     setCurrentQuestion(toIndex);
-  }, [currentQuestion, answers, markSkippedOnLeave]);
+  }, [currentQuestion, answers, markCurrentAsSkipped]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
