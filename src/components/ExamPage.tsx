@@ -11,16 +11,6 @@ export default function ExamPage() {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    setStatuses(prev => {
-      const newStatuses = [...prev];
-      if (newStatuses[currentQuestion] === 'unvisited') {
-        newStatuses[currentQuestion] = 'unvisited';
-      }
-      return newStatuses;
-    });
-  }, [currentQuestion]);
-
-  useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -33,6 +23,40 @@ export default function ExamPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Mark skipped questions when navigating away
+  const markSkippedOnLeave = useCallback((fromIndex: number, toIndex: number, currentStatuses: QuestionStatus[], currentAnswers: Record<number, string | string[]>) => {
+    const newStatuses = [...currentStatuses];
+
+    // Mark the question we're leaving as skipped if it was unvisited and not attempted
+    if (newStatuses[fromIndex] === 'unvisited' && !currentAnswers[fromIndex]) {
+      newStatuses[fromIndex] = 'skipped';
+    }
+
+    // If jumping multiple questions (via sidebar), mark all in-between as skipped
+    const start = Math.min(fromIndex, toIndex);
+    const end = Math.max(fromIndex, toIndex);
+    for (let i = start; i <= end; i++) {
+      if (i === toIndex) continue; // Don't mark the destination
+      if (newStatuses[i] === 'unvisited' && !currentAnswers[i]) {
+        newStatuses[i] = 'skipped';
+      }
+    }
+
+    return newStatuses;
+  }, []);
+
+  // Handle question navigation
+  const navigateToQuestion = useCallback((toIndex: number) => {
+    if (toIndex === currentQuestion) return;
+    if (toIndex < 0 || toIndex > 19) return;
+
+    setStatuses(prev => {
+      return markSkippedOnLeave(currentQuestion, toIndex, prev, answers);
+    });
+
+    setCurrentQuestion(toIndex);
+  }, [currentQuestion, answers, markSkippedOnLeave]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -70,17 +94,17 @@ export default function ExamPage() {
     }
   };
 
-  const handleNext = useCallback(() => {
+  const handleNext = () => {
     if (currentQuestion < 19) {
-      setCurrentQuestion(prev => prev + 1);
+      navigateToQuestion(currentQuestion + 1);
     }
-  }, [currentQuestion]);
+  };
 
-  const handlePrevious = useCallback(() => {
+  const handlePrevious = () => {
     if (currentQuestion > 0) {
-      setCurrentQuestion(prev => prev - 1);
+      navigateToQuestion(currentQuestion - 1);
     }
-  }, [currentQuestion]);
+  };
 
   const handleMark = () => {
     setStatuses(prev => {
@@ -108,7 +132,7 @@ export default function ExamPage() {
   };
 
   const handleQuestionClick = (index: number) => {
-    setCurrentQuestion(index);
+    navigateToQuestion(index);
   };
 
   const getStatusColor = (status: QuestionStatus) => {
@@ -122,7 +146,7 @@ export default function ExamPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-screen h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-md border border-blue-100 text-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Exam Submitted</h2>
           <p className="text-gray-500">Your responses have been recorded.</p>
@@ -134,9 +158,9 @@ export default function ExamPage() {
   const question = questions[currentQuestion];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="w-screen h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-blue-100 px-6 py-3 flex items-center justify-between shadow-sm">
+      <header className="bg-white border-b border-blue-100 px-6 py-3 flex items-center justify-between shadow-sm shrink-0">
         <div className="flex items-center gap-4">
           <span className="text-lg font-semibold text-gray-700">Go Lang Exam</span>
           <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
@@ -238,7 +262,7 @@ export default function ExamPage() {
         </div>
 
         {/* Right Sidebar - Question Palette */}
-        <div className="w-56 bg-white border-l border-blue-100 p-4 overflow-y-auto">
+        <div className="w-56 bg-white border-l border-blue-100 p-4 overflow-y-auto shrink-0">
           <h3 className="text-sm font-semibold text-gray-600 mb-3">Questions</h3>
           <div className="grid grid-cols-4 gap-2">
             {statuses.map((status, idx) => (

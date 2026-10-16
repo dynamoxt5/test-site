@@ -19,7 +19,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="w-screen h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm border border-blue-100">
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">Exam Portal</h1>
         <form onSubmit={handleSubmit}>
